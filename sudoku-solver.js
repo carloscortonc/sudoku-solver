@@ -1,77 +1,74 @@
-const Sudoku = require('./Sudoku');
-const { Timer, formatMatrix, rotateMatrix } = require('./utils');
+const { processCliOptions, printHelp, Timer, formatMatrix } = require("./utils");
+const summary = require("./summary");
 
-const DEFAULT_INPUT_FILE = './input/level-1.json';
+const DEFAULT_INPUT_FILE = "./input/level-1.json";
+const DEFAULT_ALGORITHM = "depth-first-search";
 
-/** Find the rotation that has the most set values in the upper rows. This translates in less generated rows, and thus
- * less time and memory complexity.
- */
-function heuristicRotation(matrix) {
-  const rotationScores = [0, 1, 2, 3].reduce((acc, rotation) => {
-    const rotatedMatrix = rotateMatrix(matrix, rotation);
-    acc[rotation] = 0;
-    rotatedMatrix.forEach((row, index) => {
-      const rowScore = row.filter(e => e > 0).length;
-      const rowWeight = (row.length - index)**2;
-      acc[rotation] += (rowScore * rowWeight);
-    });
-    return acc;
-  }, {});
-  const maxValue = Math.max(...Object.values(rotationScores));
-  const bestRotation = Object.keys(rotationScores).find(rotation => rotationScores[rotation] === maxValue);
-  return {
-    matrix: rotateMatrix(matrix, bestRotation),
-    bestRotation: parseInt(bestRotation),
-    reverseRotation: 4 - bestRotation
-  };
-}
-
-let total_sudokus_generated = 0;
-function generateSudokus(initialSudoku, accumulator) {
-  const nextRows = initialSudoku.generateRows();
-  nextRows.forEach((row, index) => {
-    const isFinalNextRow = index == nextRows.length - 1;
-    //Reuse initialSudoku for final row
-    const s = isFinalNextRow ? initialSudoku : initialSudoku.clone();
-    if (!isFinalNextRow) {
-      total_sudokus_generated++;
-    }
-    if (s.addRow(row)) {
-      accumulator.push(s.matrix);
-      return;
-    }
-    generateSudokus(s, accumulator);
-  })
-}
+const CLI_OPTIONS = {
+  input: {
+    aliases: ["--input", "-i"],
+    defaultValue: DEFAULT_INPUT_FILE,
+    description: "Input file"
+  },
+  algorithm: {
+    aliases: ["--algorithm", "-a"],
+    defaultValue: DEFAULT_ALGORITHM,
+    description: "Name of the algorithm to execute"
+  },
+  heuristics: {
+    aliases: ["--heuristics", "-he"],
+    type: "boolean",
+    defaultValue: true,
+    description: "Whether to apply heuristics"
+  },
+  summary: {
+    aliases: ["--summary", "-s"],
+    type: "boolean",
+    description: "Display an execution summary for all algorithms on available inputs"
+  },
+  help: {
+    aliases: ["--help", "-h"],
+    type: "boolean",
+    description: "Show available options"
+  }
+};
 
 /** Main function */
 (() => {
-  let fileContent;
-  try {
-    fileContent = require(process.argv[2]);
-  } catch (_) {
-    //Load default file
-    fileContent = require(DEFAULT_INPUT_FILE);
+  const options = processCliOptions(process.argv.slice(2), CLI_OPTIONS);
+  if (options.help) {
+    return printHelp(CLI_OPTIONS);
+  } else if (options.summary) {
+    return summary(options);
   }
 
-  const matrixes = [];
-  const size = fileContent.length;
-  const timer = new Timer().start();
-  //Heuristic computation is included in the measured time
-  const { matrix: initialState, bestRotation, reverseRotation } = heuristicRotation(fileContent);
-  console.log(`Heuristic rotation applied: ${bestRotation}`);
-  const initialSudoku = new Sudoku(size, initialState);
-  generateSudokus(initialSudoku, matrixes);
-  if (matrixes.length !== 1) {
-    console.log(`Something went wrong. Number of possible sudokus found: ${matrixes.length}`);
-    process.exit(0);
+  let fileContent, solver;
+  try {
+    fileContent = require(options.input);
+  } catch (_) {
+    return console.log(`Error loading input: ${options.input}`);
   }
-  const solvedMatrix = matrixes[0];
-  //Reverse heuristic rotation
-  const finalMatrix = rotateMatrix(solvedMatrix, reverseRotation);
-  
-  console.log(formatMatrix(finalMatrix));
-  console.log(`Execution time: ${timer.stop()} s`);
-  console.log(`Total Heap Memory use: ${process.memoryUsage().heapTotal / (1024 ** 2)} MB`);
-  console.log(`Total sudokus generated: ${total_sudokus_generated}`);
+  try {
+    solver = require(`./${options.algorithm}`);
+  } catch (_) {
+    //Load default solver
+    options.algorithm = DEFAULT_ALGORITHM;
+    solver = require(`./${options.algorithm}`);
+  }
+
+  console.log(`Using algorithm: ${options.algorithm}`);
+  console.log(`Using input: ${options.input}`);
+  console.log(`Using heuristics: ${options.heuristics}`);
+
+  const timer = new Timer().start();
+  const solvedMatrix = solver(fileContent, options);
+  const executionTime = timer.stop();
+
+  if (solvedMatrix) {
+    console.log(formatMatrix(solvedMatrix));
+  } else {
+    console.log("ERROR: no solved matrix");
+  }
+  console.log(`Execution time: ${executionTime} s`)
+  console.log(`Total Heap Memory used: ${process.memoryUsage().heapTotal / (1024 ** 2)} MB`);
 })();

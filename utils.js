@@ -1,3 +1,81 @@
+/** Process cli arguments based on defined options with default values */
+function processCliOptions(optionsArray, existingOptions) {
+  const evaluateValue = (value, type) => {
+    if (type === "boolean") {
+      return [true, "true"].includes(value);
+    } else if (type === "list") {
+      return value.split(",");
+    }
+    return value;
+  }
+  //Create object where each alias points to option definition object. Initialize default values
+  const { aliases, options } = Object.entries(existingOptions).reduce((acc, [optionKey, optionDefinition]) => {
+    for (const alias of optionDefinition.aliases) {
+      acc.aliases[alias] = optionDefinition;
+      acc.aliases[alias].key = optionKey;
+    }
+    acc.options[optionKey] = optionDefinition.defaultValue;
+    return acc;
+  }, { aliases: {}, options: {} });
+
+  for (let i = 0; i < optionsArray.length; i++) {
+    const curr = optionsArray[i], next = optionsArray[i + 1], optionDefinition = aliases[curr];
+    if (aliases.hasOwnProperty(curr) && !aliases.hasOwnProperty(next) && next !== undefined) {
+      options[optionDefinition.key] = evaluateValue(next, optionDefinition.type);
+      i++; //skip next array value, already processed
+    } else if (aliases.hasOwnProperty(curr)) {
+      options[optionDefinition.key] = true;
+    }
+  }
+  return options;
+}
+
+/** Utility class to format column values to a fixed length */
+class ColumnFormatter {
+  maxLengths;
+  constructor() {
+    this.maxLengths = {};
+    return this;
+  }
+  process(id, column) {
+    this.maxLengths[id] = Math.max(...column.map(e => e.length));
+    return this;
+  }
+  format(id, value, additionalSpacing = 0) {
+    return value.concat(" ".repeat(this.maxLengths[id] + additionalSpacing - value.length));
+  }
+}
+
+/** Generate help based on existing options definition */
+function printHelp(existingOptions) {
+  const ALIASES_SPACING = 3;
+  const formatAliases = aliases => aliases.join(", ")
+  const formatter = new ColumnFormatter()
+    .process("aliases", Object.values(existingOptions).map(({aliases}) => formatAliases(aliases)));
+
+  const formattedHelp = Object.values(existingOptions).reduce((acc, { aliases, defaultValue, description }) => {
+    const defaultHint = defaultValue !== undefined ? ` (default: ${defaultValue})` : "";
+    return acc.concat(`  ${formatter.format("aliases", formatAliases(aliases), ALIASES_SPACING)}${description}${defaultHint}\n`);
+  }, "\nExisting options:\n");
+
+  console.log(formattedHelp);
+}
+
+/** Utility class to measure elapsed time */
+class Timer {
+  constructor() {
+    this.time = undefined;
+  }
+  start() {
+    this.time = new Date().getTime();
+    return this;
+  }
+  stop() {
+    const current = new Date().getTime();
+    const diff = current - this.time;
+    return diff / 1000;
+  }
+}
 
 /** Calculate the block index, counting from left to right and top to bottom */
 function calculateBlockIndex(size, row, column) {
@@ -5,61 +83,6 @@ function calculateBlockIndex(size, row, column) {
   return Math.floor(row / blockLength) * blockLength + Math.floor(column / blockLength);
 }
 
-/** Method to generate all possible rows for a specific row index.
- * Wrapper for the recursive implementation.
- */
-function generatePossibleRows(size, data) {
-  const rows = [];
-  const availableNumbers = Array.from(Array(size).keys()).map(n => n + 1);
-  _generatePossibleRows(size, {
-    ...data,
-    availableNumbers,
-    currentRow: [],
-    currentColumnIndex: 0,
-  }, rows);
-  return rows;
-}
-
-/** Recursive method to generate all possible rows for a specific row index from a set of restrictions.
- * All generated rows are stored inside "accumulator" variable
- * The restrictions are:
- *  - column-restrictions: numbers already used for each column
- *  - block-restrictions: numbers already used for each block
- *  - initial-values: initial state of the sudoku, counting as row-restrictions and fixed values
- */
-function _generatePossibleRows(size, data, accumulator) {
-  const {
-    columnRestrictions,
-    blockRestrictions,
-    availableNumbers,
-    currentRow,
-    currentColumnIndex,
-    initialValues,
-    rowIndex
-  } = data;
-  if (availableNumbers.length === 0) {
-    accumulator.push(currentRow);
-    return;
-  }
-  const currentBlockIndex = calculateBlockIndex(size, rowIndex, currentColumnIndex);
-  availableNumbers.forEach((number, index) => {
-    const matchesColumnRestriction = !columnRestrictions[currentColumnIndex].includes(number);
-    const matchesRowRestriction = !initialValues || !initialValues[rowIndex].includes(number)
-    const matchesBlockRestriction = !blockRestrictions[currentBlockIndex].includes(number);
-    const matchesInitialValue = number === initialValues[rowIndex][currentColumnIndex];
-    if ((matchesColumnRestriction && matchesRowRestriction && matchesBlockRestriction) || matchesInitialValue) {
-      const cr = [...currentRow, number];
-      const an = [...availableNumbers];
-      an.splice(index, 1);
-      _generatePossibleRows(size, {
-        ...data,
-        availableNumbers: an,
-        currentRow: cr,
-        currentColumnIndex: currentColumnIndex + 1
-      }, accumulator);
-    }
-  })
-}
 
 /** Returns a new matrix after applying the given number of rotations */
 function rotateMatrix(matrix, times) {
@@ -92,26 +115,22 @@ function formatMatrix(matrix, spacing = 1) {
   return formattedMatrix;
 }
 
-/** Utility class to measure elapsed time */
-class Timer {
-  constructor() {
-    this.time = undefined;
-  }
-  start() {
-    this.time = new Date().getTime();
-    return this;
-  }
-  stop() {
-    const current = new Date().getTime();
-    const diff = current - this.time;
-    return diff / 1000;
-  }
+/** Simple method to print logs in a consistent way */
+function log(message, module, enabled){
+  [true, undefined].includes(enabled) && console.log(`[${module}] ${message}`);
 }
 
+/** Create a copy of an object */
+const deepClone = (content) => JSON.parse(JSON.stringify(content));
+
 module.exports = {
+  ColumnFormatter,
+  Timer,
+  processCliOptions,
+  printHelp,
   calculateBlockIndex,
-  generatePossibleRows,
-  formatMatrix,
   rotateMatrix,
-  Timer
+  formatMatrix,
+  deepClone,
+  log,
 }
