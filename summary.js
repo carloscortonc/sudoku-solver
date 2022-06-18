@@ -56,11 +56,10 @@ function summary() {
   const FORCED_REPEATED_COLUMNS = ["solved","executionTime"]
 
   const formatTitle = value => value.replace(/([A-Z])/g, "_$1").toUpperCase();
-  const formatRow = (currentEntry, previousEntry = {}) => COLUMNS.reduce((acc, column, index, list) => {
+  const formatRow = (currentEntry, previousEntry = {}) => COLUMNS.reduce((acc, column) => {
     let value = currentEntry[column].toString();
     const sameValue = previousEntry[column]?.toString() === value;
-    const isLastColumn = index === list.length - 1;
-    if (!FORCED_REPEATED_COLUMNS.includes(column) && sameValue && !isLastColumn) {
+    if (!FORCED_REPEATED_COLUMNS.includes(column) && sameValue) {
       value = "";
     }
     return acc + formatter.format(column, value, COLUMN_SPACING);

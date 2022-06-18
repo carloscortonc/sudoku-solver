@@ -27,9 +27,9 @@ class BacktrackingSolver {
       })
     })
   }
-  /** Find all possible values for the current cell */
-  findCurrentCellOptions() {
-    const [row, col] = this.data.position;
+  /** Calculate all possible values for the given position */
+  calculateCellOptions(position) {
+    const [row, col] = position;
     const currentBlockIndex = calculateBlockIndex(this.size, row, col);
     return Array.from(Array(this.size).keys()).map(n => n + 1).reduce((acc, number) => {
       const matchesColumnRestriction = !this.data.columnRestrictions[col].includes(number);
@@ -42,6 +42,22 @@ class BacktrackingSolver {
       return acc;
     }, []);
   }
+  /** Get cell options for the given position. Calculate them if not present */
+  getCellOptions(position){
+    const options = this.data.options[position[0]][position[1]];
+    if(options === undefined){
+      return this.calculateCellOptions(position);
+    }
+    return options;
+  }
+  /** Use the first element as the value for the current position, update options with the remaining elements */
+  useCellOptions(cellOptions) {
+    const [element, ...options] = cellOptions;
+    const [row, col] = this.data.position;
+    this.data.options[row][col] = options;
+    this.data.history.push(this.data.position);
+    this.addElement(element);
+  }
   /** Add a new element, updating related restrictions */
   addElement(element, position) {
     let [row, col] = position ? position : this.data.position;
@@ -49,9 +65,6 @@ class BacktrackingSolver {
     this.data.blockRestrictions[blockIndex].push(element);
     this.data.columnRestrictions[col].push(element);
     this.matrix[row][col] = element;
-    if (!position) {
-      this.data.history.push(this.data.position);
-    }
   }
   /** Remove an existing element, updating related restrictions */
   removeElement(position) {
@@ -73,7 +86,6 @@ class BacktrackingSolver {
     const [currentRow, currentCol] = this.data.position;
     this.data.options[currentRow][currentCol] = undefined;
     this.data.position = [previousRow, previousCol];
-    this.data.options[previousRow][previousCol].splice(0, 1);
     return true;
   }
   getCurrentPosition() {

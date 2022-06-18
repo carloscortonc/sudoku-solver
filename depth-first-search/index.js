@@ -18,18 +18,14 @@ function solve(fileContent, options) {
       btkSolver.next();
       continue;
     }
-    let cellOptions = btkSolver.data.options[row][col];
-    if (cellOptions === undefined) {
-      cellOptions = btkSolver.findCurrentCellOptions();
-    }
+    const cellOptions = btkSolver.getCellOptions(currentPosition);
     if (cellOptions.length === 0) {
-      if (!btkSolver.back()) {
+      if (btkSolver.back() === false) {
         return undefined;
       }
       continue;
     }
-    btkSolver.data.options[row][col] = cellOptions;
-    btkSolver.addElement(cellOptions[0]);
+    btkSolver.useCellOptions(cellOptions);
     btkSolver.next();
   }
   //Reverse heuristic rotation, if applied
