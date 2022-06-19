@@ -1,6 +1,10 @@
 # Sudoku solver
 
-Two algorithms are implemented in this project:
+This project was born after my flatmate and I wondered one night at home about how a program that solved a sudoku would be (he doesn't have a computer science background, but we both love puzzles and logic problems).
+
+The first achieved solution was a version of the current breadth-first-search, but consumed a lot of memory and wasn't too efficient. After a conversation with my sister (also logic and puzzle enthusiast), the second implementation was born (depth-first-search), and I did some restructuring to fit both solvers in the project.
+
+So, the two algorithms implemented in this project are:
 - Breadth first search (https://en.wikipedia.org/wiki/Breadth-first_search)
 - Depth first search (https://en.wikipedia.org/wiki/Depth-first_search)
 
@@ -21,16 +25,16 @@ The available cli options are the following:
 
 | Option | Default value | Description |
 | - | - | - |
-| --input, -i | ./input/level-1.json | Input puzzle |
-| --algorithm, -a | depth-first-search | Name of the algorithm to execute |
-| --heuristics, -he | true | Whether to apply heuristics |
+| --input, -i | `./input/level-1.json` | Input puzzle |
+| --algorithm, -a | `depth-first-search` | Name of the algorithm to execute |
+| --heuristics, -he | `true` | Whether to apply heuristics |
 | --summary, -s | - | Display an execution summary for all algorithms on available inputs |
 | --help, h | - | Show available options |
 
 <br/>
 
 The summary mode differs from the regular mode in the following:
-- It does not include logs for each executing algorithms
+- It does not include logs for each executing algorithm
 - It does not output memory usage for each execution
 - It does not output solved matrices
 
@@ -52,9 +56,14 @@ The output of regular execution mode (no summary) includes:
 - Execution time
 - Total heap memory usage (extracted from `process.memoryUsage()`)
 
+<img alt="Execution output" src="https://user-images.githubusercontent.com/104267232/174460322-20e90aac-af77-4f9d-9b2c-8229b59e5177.png">
+<br/>
+
 If the summary mode is enabled, the output will consist of a table with the execution times for the different combinations of input, algorithm and heuristics.
 
+<img alt="Summary output" src="https://user-images.githubusercontent.com/104267232/174460325-d18b8d8f-8b32-4a9e-99b5-abeaa2a877f3.png">
+
 ## Extensibility
-The code was organized so that more algorithms can be easily added. To add a new algorithm:
+The code was organized so that more algorithms can be easily added. To add one:
 - Create a new folder with the algorithm name (this name will be used in the cli options)
 - Create an `index.js` file inside this folder. This file must have a default export consisting of a function that takes in two parameters, the file content (in the format described above) and an options object, and outputs the solved matrix or `undefined` in case no solution was found.

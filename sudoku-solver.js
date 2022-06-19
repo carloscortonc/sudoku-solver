@@ -69,6 +69,6 @@ const CLI_OPTIONS = {
   } else {
     console.log("ERROR: no solved matrix");
   }
-  console.log(`Execution time: ${executionTime} s`)
-  console.log(`Total Heap Memory used: ${process.memoryUsage().heapTotal / (1024 ** 2)} MB`);
+  console.log(`Execution time: ${executionTime} s`);
+  console.log(`Total Heap Memory used: ${(process.memoryUsage().heapTotal / (1024 ** 2)).toFixed(2)} MB`);
 })();
